@@ -152,8 +152,6 @@ def get_spikes_within_event(data, event ='microsaccade', before_event = 0.3, aft
     #df = pd.DataFrame(data=get_spikes(subset_criteria))
     df.columns = ['trialID', 'chanID', 't', 'area']
 
-
-
     # For each trial, get the time the event happened
     trials = pd.unique(df['trialID'])
 
@@ -176,6 +174,7 @@ def get_spikes_within_event(data, event ='microsaccade', before_event = 0.3, aft
     spikes_within_event = pd.DataFrame(columns = ['trialID', 'chanID', 't', 'area'])
 
     for t in trials:
+        print t
         if len(event_times[event_times.trialID==t].index)>0:
             trial_times = event_times[event_times.trialID==t]
             time = trial_times['e_time']
@@ -190,7 +189,8 @@ def get_spikes_within_event(data, event ='microsaccade', before_event = 0.3, aft
             #print min_spike_time[0]
 
             # print min_spike_time
-            relevant_spikes = df.loc[(df['t'] > min_spike_time) & (df['t'] < max_spike_time)]
+            relevant_spikes = df.loc[(df['trialID']==t) & (df['t'] > min_spike_time) & (df['t'] < max_spike_time)]
+            print (relevant_spikes)
             # print relevant_spikes
 
             # Norm times by event time
@@ -227,7 +227,7 @@ def get_fr(data, window = 0.05): #subset_criteria = "area='V4'", window = 0.05):
 
             if (len(spike_times.index)>0):
 
-                for bin_start in np.arange(0, 5, window):
+                for bin_start in np.arange(0.0, 5.0, window):
                     num_spikes = len(spike_times[((spike_times >= bin_start) & (spike_times < (bin_start + window)))])
 
                     #print t, c, bin_start, num_spikes
