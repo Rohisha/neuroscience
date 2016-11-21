@@ -8,7 +8,7 @@ channels, events, spikes
 import db
 
 ### Get contents of table
-spikes_table = db.get_data('spikes')
+spikes_table = db.get_data('spikes') \n
 chan_table = db.get_data('channels')
 events_table = db.get_data('events')
 
