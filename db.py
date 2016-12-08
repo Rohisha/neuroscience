@@ -5,8 +5,9 @@
 import sqlite3
 import numpy as np
 import pandas as pd
+import scipy.io as sio
 
-sqlite_file = 'mooredb.sqlite'    # name of the sqlite database file
+sqlite_file = 'mooredb.sqlite'  # name of the sqlite database file
 # table_name1 = 'my_table_1'  # name of the table to be created
 # table_name2 = 'my_table_2'  # name of the table to be created
 # new_field = 'my_1st_column' # name of the column
@@ -51,6 +52,44 @@ def create_table(table):
     # Committing changes and closing the connection to the database file
     conn.commit()
     conn.close()
+
+
+
+def load_file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "channels", ts_table = 'spikes', config_file = None):
+    # Take in a configuration file with the chanID attributes you want to get (if they're there), 
+    # and the name of the time series data to load, tables you want to load these into,
+    # any other parameters and where they're to be found (ex: in the directory name)
+    # Should put the parmeters currently in this function into config file
+    conn = sqlite3.connect(sqlite_file)
+    c = conn.cursor()
+
+    file_types = sio.whosmat(matlab_file) 
+    print file_types
+    #returns tuple with one for each array (or other object) in the file.
+    # Each tuple contains the name, shape and data type of the array.
+
+    # If you want all length 1 dimensions squeezed out, try this:
+    mat_contents = sio.loadmat(matlab_file, squeeze_me=True)
+    attr_vars = mat_contents.keys()
+    attr_vars.remove(ts_variable)
+
+    # Put everything in the file besides the given time series data variable in another attributes table for this channel
+    # NOTE: if an attribute is not 1D, entire thing will be inserted into the same cell
+
+    # Add each column that isn't ts_variable to channel attributes table (should specify this table in config file)
+    for var in attr_vars:
+        try:
+            c.execute("ALTER TABLE {tableName} ADD COLUMN {col} {type};".\
+                format(tableName = attr_table, col = var, type = "NONE"))
+        except:
+            pass
+
+    conn.commit()
+    conn.close()
+
+    return mat_contents
+    #struct = mat_contents['my_struct']
+    #print mat_contents.shape
 
 
 # Load table with created data
