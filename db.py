@@ -31,6 +31,16 @@ conn.commit()
 conn.close()
 '''
 
+def delete_table(table):
+    conn = sqlite3.connect(sqlite_file)
+    c = conn.cursor()
+
+    c.execute("DROP TABLE {tn};".format(tn=table))
+
+    conn.commit()
+    conn.close()
+
+
 # Create given table definition
 def create_table(table):
     # Connecting to the database file
@@ -39,15 +49,15 @@ def create_table(table):
 
     if table == 'spikes':
         # Creating a new SQLite table with 1 column
-        c.execute('CREATE TABLE spikes (trialID INTEGER, chanID INTEGER, t REAL, spike INTEGER)')
+        c.execute('CREATE TABLE spikes (trialID INTEGER PRIMARY KEY, chanID INTEGER, t REAL, spike INTEGER)')
 
     if table == 'channels':
         # Creating a new SQLite table with 1 column
-        c.execute('CREATE TABLE channels (chanID INTEGER, area TEXT)')
+        c.execute('CREATE TABLE channels (chanID INTEGER PRIMARY KEY)') #, area TEXT)')
 
     if table == 'events':
         # Creating a new SQLite table with 1 column
-        c.execute('CREATE TABLE events (trialID INTEGER, t REAL, event TEXT)')
+        c.execute('CREATE TABLE events (trialID INTEGER PRIMARY KEY, t REAL, event TEXT)')
 
     # Committing changes and closing the connection to the database file
     conn.commit()
@@ -70,8 +80,12 @@ def load_file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "ch
 
     # If you want all length 1 dimensions squeezed out, try this:
     mat_contents = sio.loadmat(matlab_file, squeeze_me=True)
+    # Add filename as a key/value item
+    mat_contents['file'] = str(matlab_file)
     attr_vars = mat_contents.keys()
     attr_vars.remove(ts_variable)
+    attr_vars.remove('__header__')
+    # attr_vars.append("file") #NOTE: change this when know what file names usually mean
 
     # Put everything in the file besides the given time series data variable in another attributes table for this channel
     # NOTE: if an attribute is not 1D, entire thing will be inserted into the same cell
@@ -79,10 +93,27 @@ def load_file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "ch
     # Add each column that isn't ts_variable to channel attributes table (should specify this table in config file)
     for var in attr_vars:
         try:
-            c.execute("ALTER TABLE {tableName} ADD COLUMN {col} {type};".\
-                format(tableName = attr_table, col = var, type = "NONE"))
+            c.execute("ALTER TABLE {tn} ADD COLUMN {col} {type};".\
+                format(tn = attr_table, col = var, type = "NONE")) # NOTE: everything currently added as blobs (add type input to config file?)
         except:
             pass
+
+    # Add a row in the attr_table for the attr values that are in this file, put these file values into table
+    # Include the matlab file name as data source
+    #c.execute("INSERT INTO {tn} attr_vars VALUES (mat_contents[attr] for attr in attr_vars)")
+
+    col_names_str = ', '.join(str(col_name) for col_name in attr_vars)
+    print col_names_str
+    #file_values_string = ', '.join(str(mat_contents[col_name]) for col_name in attr_vars)
+    file_values_string = ', '.join("'{}'".format(str(mat_contents[col_name])) for col_name in attr_vars)
+    #'"{}"'.format(word)
+    print file_values_string
+
+    print("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
+                format(tn=attr_table, col_names = col_names_str, file_values = file_values_string))
+
+    c.execute("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
+                format(tn=attr_table, col_names = col_names_str, file_values = file_values_string))
 
     conn.commit()
     conn.close()
