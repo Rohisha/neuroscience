@@ -31,6 +31,15 @@ conn.commit()
 conn.close()
 '''
 
+def delete_all_tables():
+    # TODO
+    pass
+
+def create_all_tables():
+    # TODO
+    pass
+
+
 def delete_table(table):
     conn = sqlite3.connect(sqlite_file)
     c = conn.cursor()
@@ -49,7 +58,7 @@ def create_table(table):
 
     if table == 'spikes':
         # Creating a new SQLite table with 1 column
-        c.execute('CREATE TABLE spikes (trialID INTEGER PRIMARY KEY, chanID INTEGER, t REAL, spike INTEGER)')
+        c.execute('CREATE TABLE spikes (chanID INTEGER)') # , t REAL trialID INTEGER PRIMARY KEY, c, spike INTEGER)')
 
     if table == 'channels':
         # Creating a new SQLite table with 1 column
@@ -65,7 +74,7 @@ def create_table(table):
 
 
 
-def load_file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "channels", ts_table = 'spikes', config_file = None):
+def file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "channels", ts_table = 'spikes', config_file = None):
     # Take in a configuration file with the chanID attributes you want to get (if they're there), 
     # and the name of the time series data to load, tables you want to load these into,
     # any other parameters and where they're to be found (ex: in the directory name)
@@ -109,18 +118,37 @@ def load_file_to_table(matlab_file, ts_variable = 'spikeTimes', attr_table = "ch
     #'"{}"'.format(word)
     print file_values_string
 
-    print("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
-                format(tn=attr_table, col_names = col_names_str, file_values = file_values_string))
+    # print("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
+    #            format(tn=attr_table, col_names = col_names_str, file_values = file_values_string))
 
     c.execute("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
                 format(tn=attr_table, col_names = col_names_str, file_values = file_values_string))
+
+    curr_chanID = c.lastrowid
+    print curr_chanID
+
+
+    # Add ts variable column to ts table
+    try:
+        c.execute("ALTER TABLE {tn} ADD COLUMN {col} {type};".\
+            format(tn = ts_table, col = ts_variable, type = "REAL")) 
+    except:
+        pass
+
+
+    col_names_str = ', '.join(str(col_name) for col_name in ['chanID', ts_variable])
+
+    # Add spike times to spike table
+    for obv in mat_contents[ts_variable]:
+        c.execute("INSERT INTO {tn} ({col_names}) VALUES ({file_values})".\
+                format(tn=ts_table, col_names = col_names_str,
+                    file_values = ', '.join("'{}'".format(str(col_val)) for col_val in [curr_chanID, obv])))
 
     conn.commit()
     conn.close()
 
     return mat_contents
-    #struct = mat_contents['my_struct']
-    #print mat_contents.shape
+
 
 
 # Load table with created data
